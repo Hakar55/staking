@@ -14,14 +14,15 @@ contract EuphoriaTest is ERC20 ,Ownable{
 
     constructor() ERC20("EuphoriaTest", "EuphTest"){}
     
-    function giveAwayTokens(address to, uint256 amount) public onlyOwner {
-        require(givawayTokensMinted != giveawayTokensSupply, "Giveaway token supply mints exceeded");
+    function giveawayTokens(address to, uint256 amount) public onlyOwner {
+        require(givawayTokensMinted <= giveawayTokensSupply && giveawayTokensSupply + totalSupply() <= maxSupply, "Giveaway token supply mints exceeded");
         _mint(to, amount);
         givawayTokensMinted +=amount;
     }
     function mint(address to, uint256 amount) external {
         require(!paused, "Contract is Paused");
         require(controllers[msg.sender], "Only controllers can mint");
+        require(amount + totalSupply() <= maxSupply, "Total supply exceeded" );
         _mint(to, amount);
     }
     function burn(uint256 amount) public {
