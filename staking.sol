@@ -76,26 +76,26 @@ contract NFTStaking is Ownable, IERC721Receiver {
   function unstake(uint256[] calldata tokenIds) external {
       _claim(msg.sender, tokenIds, true);
   }
-
+  
   function _claim(address account, uint256[] calldata tokenIds, bool _unstake) internal {
     uint256 tokenId;
     uint256 earned = 0;
+    uint256 rewardmath = 0;
 
     for (uint i = 0; i < tokenIds.length; i++) {
       tokenId = tokenIds[i];
       Stake memory staked = vault[tokenId];
       require(staked.owner == account, "not an owner");
       uint256 stakedAt = staked.timestamp;
-      earned += 10000 ether * (block.timestamp - stakedAt) / 1 days;
+      rewardmath = 10000 ether * (block.timestamp - stakedAt) / 86400 ;
+      earned = rewardmath / 100;
       vault[tokenId] = Stake({
         owner: account,
         tokenId: uint24(tokenId),
         timestamp: uint48(block.timestamp)
       });
-
     }
     if (earned > 0) {
-      earned = earned / 10;
       token.mint(account, earned);
     }
     if (_unstake) {
@@ -104,19 +104,24 @@ contract NFTStaking is Ownable, IERC721Receiver {
     emit Claimed(account, earned);
   }
 
-  function earningInfo(uint256[] calldata tokenIds) external view returns (uint256[2] memory info) {
+  function earningInfo(address account, uint256[] calldata tokenIds) external view returns (uint256[1] memory info) {
      uint256 tokenId;
-     uint256 totalScore = 0;
      uint256 earned = 0;
-      Stake memory staked = vault[tokenId];
-      uint256 stakedAt = staked.timestamp;
-      earned += 100000 ether * (block.timestamp - stakedAt) / 1 days;
-    uint256 earnRatePerSecond = totalScore * 1 ether / 1 days;
-    earnRatePerSecond = earnRatePerSecond / 100000;
-    // earned, earnRatePerSecond
-    return [earned, earnRatePerSecond];
-  }
+     uint256 rewardmath = 0;
 
+    for (uint i = 0; i < tokenIds.length; i++) {
+      tokenId = tokenIds[i];
+      Stake memory staked = vault[tokenId];
+      require(staked.owner == account, "not an owner");
+      uint256 stakedAt = staked.timestamp;
+      rewardmath = 10000 ether * (block.timestamp - stakedAt) / 86400;
+      earned = rewardmath / 100;
+
+    }
+    if (earned > 0) {
+      return [earned];
+    }
+}
   // should never be used inside of transaction because of gas fee
   function balanceOf(address account) public view returns (uint256) {
     uint256 balance = 0;
