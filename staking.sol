@@ -2,10 +2,16 @@
 
 pragma solidity ^0.8.4;
 
-import "https://github.com/Hakar55/staking/blob/main/EuphoriaTest.sol";
-import "https://github.com/Hakar55/staking/blob/main/EuphoriaTestNFT.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-contract NFTStaking is Ownable, IERC721Receiver {
+
+interface IEuphoriaTestNft {
+    function tokenCount() external view returns(uint256);
+
+    function mint(address to, uint256 amount) external;
+}
+
+contract TestEuphorianStaking is IERC721Receiver {
 
   uint256 public totalStaked;
   
@@ -21,15 +27,14 @@ contract NFTStaking is Ownable, IERC721Receiver {
   event Claimed(address owner, uint256 amount);
 
   // reference to the Block NFT contract
-  EuphoriaTestNFT nft;
-  EuphoriaTest token;
-
+  ERC721 nft;
+  address nftAddress = 0xa1e0E72cF7881f144665debd5714F7a15541Ed05;
+  address tokenAddress = 0x8D3A93640853C2bB589624b34915043996169B36;
   // maps tokenId to stake
   mapping(uint256 => Stake) public vault; 
 
-   constructor(EuphoriaTestNFT _nft, EuphoriaTest _token) { 
+   constructor(ERC721 _nft) { 
     nft = _nft;
-    token = _token;
   }
 
   function stake(uint256[] calldata tokenIds) external {
@@ -88,15 +93,17 @@ contract NFTStaking is Ownable, IERC721Receiver {
       require(staked.owner == account, "not an owner");
       uint256 stakedAt = staked.timestamp;
       rewardmath = 10000 ether * (block.timestamp - stakedAt) / 86400 ;
-      earned = rewardmath / 100;
+      earned = earned + (rewardmath / 100);
+      
       vault[tokenId] = Stake({
         owner: account,
         tokenId: uint24(tokenId),
         timestamp: uint48(block.timestamp)
       });
+      ++earned;
     }
     if (earned > 0) {
-      token.mint(account, earned);
+      IEuphoriaTestNft(tokenAddress).mint(account, earned);
     }
     if (_unstake) {
       _unstakeMany(account, tokenIds);
@@ -104,7 +111,7 @@ contract NFTStaking is Ownable, IERC721Receiver {
     emit Claimed(account, earned);
   }
 
-  function earningInfo(address account, uint256[] calldata tokenIds) external view returns (uint256[1] memory info) {
+  function earningInfo(address account, uint256[] calldata tokenIds) external view returns (uint256 info) {
      uint256 tokenId;
      uint256 earned = 0;
      uint256 rewardmath = 0;
@@ -115,17 +122,15 @@ contract NFTStaking is Ownable, IERC721Receiver {
       require(staked.owner == account, "not an owner");
       uint256 stakedAt = staked.timestamp;
       rewardmath = 10000 ether * (block.timestamp - stakedAt) / 86400;
-      earned = rewardmath / 100;
+      earned = earned + (rewardmath / 100);
+    }
+    return earned;
 
-    }
-    if (earned > 0) {
-      return [earned];
-    }
 }
   // should never be used inside of transaction because of gas fee
   function balanceOf(address account) public view returns (uint256) {
     uint256 balance = 0;
-    uint256 supply = nft.tokenCount();
+    uint256 supply = IEuphoriaTestNft(nftAddress).tokenCount();
     for(uint i = 1; i <= supply; i++) {
       if (vault[i].owner == account) {
         balance += 1;
@@ -137,7 +142,7 @@ contract NFTStaking is Ownable, IERC721Receiver {
   // should never be used inside of transaction because of gas fee
   function tokensOfOwner(address account) public view returns (uint256[] memory ownerTokens) {
 
-    uint256 supply = nft.tokenCount();
+    uint256 supply = IEuphoriaTestNft(nftAddress).tokenCount();
     uint256[] memory tmp = new uint256[](supply);
 
     uint256 index = 0;
